@@ -1,0 +1,20 @@
+a, h1, h2, h3, h4, h5, p, .nav-link, label, li {
+    color: #b9aec8;
+    font-family: 'Comfortaa', sans-serif;
+    list-style: none;
+}
+
+body, button {
+    background-color: #514a74;
+}
+
+li {
+    margin: 0 4em;
+}
+
+li:hover a:hover {
+    color: #b9aec8;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, padding-bottom 0.15s ease-in-out;
+    padding-bottom: 24px;
+    text-decoration: underline dotted 5px #b9aec8;
+}
