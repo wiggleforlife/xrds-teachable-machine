@@ -1,69 +1,59 @@
-// Classifier Variable
+// Global variable to store the classifier
 let classifier;
-// Model URL
-let imageModelURL = '/static/model/';
 
-// Video
-let video;
-let flippedVideo;
-// To store the classification
-let label = "";
+// Label
+let label = 'listening...';
 
-// Load the model first
+// Teachable Machine model URL:
+let soundModelUrl = 'http://127.0.0.1:5000/static/model/'; // for some reason the sound req remote model but image doesn't...
+
+let bark = new Audio("/static/bark.opus");
+let song = new Audio("/static/song.opus");
+
+let doggone = false;
+
+
 function preload() {
-  classifier = ml5.imageClassifier(imageModelURL + 'model.json');
+    // Load the model
+    classifier = ml5.soundClassifier(soundModelUrl + 'model.json');
 }
 
 function setup() {
-  createCanvas(320, 260);
-  // Create the video
-  video = createCapture(VIDEO);
-  video.size(320, 240);
-  video.hide();
-
-  flippedVideo = ml5.flipImage(video)
-  // Start classifying
-  classifyVideo();
+    createCanvas(320, 240);
+  fill(255);
+  textSize(32);
+  textAlign(CENTER, CENTER);
+  text(label, width / 2, height / 2);
+    // Start classifying
+    // The sound model will continuously listen to the microphone
+    classifier.classify(gotResult);
 }
 
 function draw() {
-  background(0);
-  // Draw the video
-  if (label == 'cat') {
-    background(255);
-    fill(0);
-    textSize(100);
-    textAlign(CENTER);
-    text("Hi Cian", width / 2, height / 2);
-  }
-
-  else{
-  image(flippedVideo, 0, 0);
-
-  // Draw the label
-  fill(255);
-  textSize(16);
-  textAlign(CENTER);
-  text(label, width / 2, height - 4);
-  }
+    if (!doggone && label === "Car") {
+        letTheDogsOut();
+    }
 }
 
-// Get a prediction for the current video frame
-function classifyVideo() {
-  flippedVideo = ml5.flipImage(video)
-  classifier.classify(flippedVideo, gotResult);
-}
-
-// When we get a result
+// The model recognizing a sound will trigger this event
 function gotResult(error, results) {
-  // If there is an error
-  if (error) {
-    console.error(error);
-    return;
-  }
-  // The results are in an array ordered by confidence.
-  // console.log(results[0]);
-  label = results[0].label;
-  // Classifiy again!
-  classifyVideo();
+    if (doggone) {
+        return;
+    } else if (error) {
+        console.error(error);
+        return;
+    }
+    // The results are in an array ordered by confidence.
+    // console.log(results[0]);
+    label = results[0].label;
+}
+
+function letTheDogsOut() {
+    bark.play();
+    song.play();
+
+    doggone = true;
+
+    document.getElementById("alert").style.display = "block";
+    document.getElementsByClassName("body")[0].style.background = "black";
 }

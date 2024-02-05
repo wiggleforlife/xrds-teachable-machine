@@ -5,7 +5,10 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return render_template("index.html", title="Home", scripts=["https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.9.0/p5.min.js", "https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.9.0/addons/p5.dom.min.js", "https://unpkg.com/ml5@latest/dist/ml5.min.js"]
+    return render_template("index.html", title="Home",
+                           scripts=["https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.9.0/p5.min.js",
+                                    "https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.9.0/addons/p5.dom.min.js",
+                                    "https://unpkg.com/ml5@latest/dist/ml5.min.js"]
                            )
 
 

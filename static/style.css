@@ -1,11 +1,16 @@
+@font-face {
+  font-family: "uncialAntiqua";
+  src: url("/static/UncialAntiqua-Regular.ttf");
+}
+
 a, h1, h2, h3, h4, h5, p, .nav-link, label, li {
-    color: #b9aec8;
-    font-family: 'Comfortaa', sans-serif;
+    color: #d22a2a;
+    font-family: 'uncialAntiqua', 'Impact', sans-serif;
     list-style: none;
 }
 
-body, button {
-    background-color: #514a74;
+body {
+    background-image: url("/static/campground.jpg");
 }
 
 li {
@@ -13,8 +18,19 @@ li {
 }
 
 li:hover a:hover {
-    color: #b9aec8;
+    color: #d22a2a;
     transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, padding-bottom 0.15s ease-in-out;
     padding-bottom: 24px;
-    text-decoration: underline dotted 5px #b9aec8;
+    text-decoration: underline dotted 5px #d22a2a;
+}
+
+#content {
+    background-color: #aaaaaa;
+    border: red 1em dashed;
+    margin: 20em 20%;
+    padding: 2em;
+}
+
+#alert {
+    display: none;
 }
