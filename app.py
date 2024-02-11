@@ -11,6 +11,9 @@ def index():
                                     "https://unpkg.com/ml5@latest/dist/ml5.min.js"]
                            )
 
+@app.route('/api/pos')
+def api_pos():
+    return "200"
 
 if __name__ == '__main__':
     app.run(debug=True)

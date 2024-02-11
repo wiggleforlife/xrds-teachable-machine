@@ -10,10 +10,9 @@ let soundModelUrl = 'http://127.0.0.1:5000/static/model/'; // for some reason th
 let bark = new Audio("/static/bark.opus");
 let song = new Audio("/static/song.opus");
 
-let doggone = false;
+let shouldRun = false;
 
-
-function preload() {
+async function preload() {
     // Load the model
     classifier = ml5.soundClassifier(soundModelUrl + 'model.json');
 }
@@ -30,14 +29,14 @@ function setup() {
 }
 
 function draw() {
-    if (!doggone && label === "Car") {
+    if (shouldRun && label === "Car") {
         letTheDogsOut();
     }
 }
 
 // The model recognizing a sound will trigger this event
 function gotResult(error, results) {
-    if (doggone) {
+    if (!shouldRun) {
         return;
     } else if (error) {
         console.error(error);
@@ -52,7 +51,7 @@ function letTheDogsOut() {
     bark.play();
     song.play();
 
-    doggone = true;
+    shouldRun = false;
 
     document.getElementById("alert").style.display = "block";
     document.getElementsByClassName("body")[0].style.background = "black";
