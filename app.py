@@ -12,7 +12,11 @@ def index():
                                     "https://unpkg.com/ml5@latest/dist/ml5.min.js"]
                            )
 
-@app.route('/api/pos')
+
+@app.route('/about')
+def about():
+    return render_template("about.html", title="About", scripts=[])
+
 @app.route('/api/pos', methods=['GET'])
 def api_pos():
     return str(isRight)
