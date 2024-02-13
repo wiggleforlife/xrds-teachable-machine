@@ -5,20 +5,26 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 use bevy::window::WindowResolution;
+use bevy_easings::*;
 use bevy_mod_reqwest::bevy_eventlistener::callbacks::ListenerInput;
 use bevy_mod_reqwest::reqwest::header::ACCESS_CONTROL_ALLOW_ORIGIN;
 use bevy_mod_reqwest::reqwest::{Request, Url};
 use bevy_mod_reqwest::*;
 use rand::Rng;
 
-const RES: UVec2 = UVec2::new(1280, 720);
-
 const CAR_SIZE_HALF: Vec2 = Vec2::new(100., 100.);
-const CAR_LEFT_LANE: Vec3 = Vec3::new(-160., -200., 0.);
-const CAR_RIGHT_LANE: Vec3 = Vec3::new(160., -200., 0.);
+const CAR_LEFT_LANE: Vec3 = Vec3::new(-160., -200., 2.);
+const CAR_RIGHT_LANE: Vec3 = Vec3::new(160., -200., 2.);
 
-const OBSTACLE_SPAWN: [Vec3; 2] =
-    [Vec3::new(-160., 300., 0.), Vec3::new(160., 300., 0.)];
+const OBSTACLE_SPAWN: Transform = Transform {
+    translation: Vec3::new(0., 240., 1.),
+    scale: Vec3::new(0.05, 0.05, 1.),
+    rotation: Quat::from_xyzw(0., 0., 0., 0.),
+};
+const OBSTACLE_DESPAWN: ([Vec3; 2], Vec3) = (
+    [Vec3::new(-200., -350., 1.), Vec3::new(160., -350., 1.)],
+    Vec3::new(1.8, 1.8, 1.),
+);
 
 fn main() {
     App::new()
@@ -36,6 +42,7 @@ fn main() {
                 ..default()
             }),
             ReqwestPlugin::default(),
+            EasingsPlugin,
         ))
         .add_state::<GameState>()
         .add_event::<PositionGetEvent>()
@@ -45,7 +52,10 @@ fn main() {
             Update,
             (
                 //TODO surely there's a better way
-                spawn_obstacles.run_if(in_state(GameState::Playing)),
+                spawn_obstacles.run_if(
+                    in_state(GameState::Playing)
+                        .and_then(on_timer(Duration::from_secs(2))),
+                ),
                 update_car_position.run_if(in_state(GameState::Playing)),
                 update_obstacle_position.run_if(in_state(GameState::Playing)),
                 get_body_position.run_if(
@@ -73,6 +83,8 @@ struct MainCamera;
 struct Car;
 #[derive(Component)]
 struct Obstacle;
+#[derive(Component)]
+struct HasEase(bool);
 
 #[derive(Event)]
 struct CrashEvent;
@@ -134,23 +146,15 @@ fn spawn_obstacles(
             .expect("Failed to order obstacles")
     });
 
-    if obstacles.len() < 3
-        && (obstacles.is_empty()
-            || obstacles.last().unwrap().0.translation.y < 100.)
-        && rng.gen_range(0..100) == 27
-    {
-        commands.spawn((
-            SpriteBundle {
-                texture: assets.obstacles[rng.gen_range(0..2)].clone(),
-                transform: Transform {
-                    translation: OBSTACLE_SPAWN[rng.gen_range(0..2)],
-                    ..default()
-                },
-                ..default()
-            },
-            Obstacle,
-        ));
-    }
+    commands.spawn((
+        SpriteBundle {
+            texture: assets.obstacles[rng.gen_range(0..2)].clone(),
+            transform: OBSTACLE_SPAWN,
+            ..default()
+        },
+        HasEase(false),
+        Obstacle,
+    ));
 }
 
 #[derive(Event)]
@@ -193,8 +197,12 @@ fn update_car_position(
 
 fn update_obstacle_position(
     mut commands: Commands,
-    mut obstacles: Query<
-        (&mut Transform, &mut Sprite, Entity),
+    mut obstacle_sprites: Query<
+        (&mut Sprite, &mut HasEase, Entity),
+        (With<Obstacle>, Without<Car>),
+    >,
+    mut obstacle_transforms: Query<
+        (&mut Transform, Entity),
         (With<Obstacle>, Without<Car>),
     >,
     mut event_writer: EventWriter<CrashEvent>,
@@ -206,18 +214,35 @@ fn update_obstacle_position(
         car.y - CAR_SIZE_HALF.y..car.y + CAR_SIZE_HALF.y,
     );
 
-    for mut obstacle in obstacles.iter_mut() {
-        if car_ranges.0.contains(&obstacle.0.translation.x)
-            && car_ranges.0.contains(&obstacle.0.translation.y)
+    let obstacle_transforms: Vec<_> = obstacle_transforms.iter_mut().collect();
+    let mut obstacle_sprites: Vec<_> = obstacle_sprites.iter_mut().collect();
+
+    for i in 0..obstacle_transforms.len() {
+        if car_ranges.0.contains(&obstacle_transforms[i].0.translation.x)
+            && car_ranges.0.contains(&obstacle_transforms[i].0.translation.y)
         {
             event_writer.send(CrashEvent {});
         }
-        if obstacle.0.translation.y <= -350. {
-            commands.entity(obstacle.2).despawn();
+        if obstacle_transforms[i].0.translation.y <= -350. {
+            commands.entity(obstacle_transforms[i].1).despawn();
             return;
         }
-
-        obstacle.0.translation.y -= 1f32;
+        //TODO some of this might've been so unnecessary, i forgot to add the plugin... try inserting when spawning og entity
+        if !obstacle_sprites[i].1 .0 {
+            commands.entity(obstacle_transforms[i].1).insert(
+                obstacle_transforms[i].0.ease_to(
+                    Transform::default()
+                        .with_translation(
+                            OBSTACLE_DESPAWN.0
+                                [rand::thread_rng().gen_range(0..2)],
+                        )
+                        .with_scale(OBSTACLE_DESPAWN.1),
+                    EaseFunction::QuarticIn,
+                    EasingType::Once { duration: Duration::from_secs(4) },
+                ),
+            );
+            obstacle_sprites[i].1 .0 = true;
+        }
     }
 }
 
