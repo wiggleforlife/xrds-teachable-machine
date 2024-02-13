@@ -2,6 +2,7 @@ from flask import Flask, render_template, request
 
 app = Flask(__name__)
 
+isRight = False
 
 @app.route('/')
 def index():
@@ -12,8 +13,18 @@ def index():
                            )
 
 @app.route('/api/pos')
+@app.route('/api/pos', methods=['GET'])
 def api_pos():
-    return "200"
+    return str(isRight)
+
+
+@app.route('/api/setpos', methods=['POST'])
+def process():
+    data = request.json['data']
+    global isRight
+    isRight = bool(data)
+    return "hi"
+
 
 if __name__ == '__main__':
     app.run(debug=True)

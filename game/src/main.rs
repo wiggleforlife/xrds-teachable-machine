@@ -158,10 +158,10 @@ fn spawn_obstacles(
 }
 
 #[derive(Event)]
-struct PositionGetEvent(String);
+struct PositionGetEvent(bool);
 impl From<ListenerInput<ReqResponse>> for PositionGetEvent {
     fn from(value: ListenerInput<ReqResponse>) -> Self {
-        let s = value.as_string().unwrap();
+        let s = value.as_string().unwrap() == "True";
         PositionGetEvent(s)
     }
 }
@@ -188,11 +188,8 @@ fn update_car_position(
     let event = event.unwrap();
     let mut car = car.single_mut();
 
-    let x = i32::from_str(&*event.0)
-        .expect(&format!("Failed to parse response body - {:?}", &*event.0));
-
     (car.0.translation, car.1.flip_x) =
-        if x > 0 { (CAR_RIGHT_LANE, true) } else { (CAR_LEFT_LANE, false) };
+        if event.0 { (CAR_RIGHT_LANE, true) } else { (CAR_LEFT_LANE, false) };
 }
 
 fn update_obstacle_position(

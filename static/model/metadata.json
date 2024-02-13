@@ -1,1 +1,1 @@
-{"tfjsSpeechCommandsVersion":"0.4.0","modelName":"TMv2","timeStamp":"2024-02-05T08:21:50.527Z","wordLabels":["Background Noise","Car"]}
+{"tfjsVersion":"1.3.1","tmVersion":"2.4.7","packageVersion":"0.8.4-alpha2","packageName":"@teachablemachine/image","timeStamp":"2024-02-13T20:42:21.147Z","userMetadata":{},"modelName":"tm-my-image-model","labels":["Right","Class 2"],"imageSize":224}

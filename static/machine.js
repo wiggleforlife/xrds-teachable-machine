@@ -1,58 +1,70 @@
-// Global variable to store the classifier
+// Classifier Variable
 let classifier;
+// Model URL
+let imageModelURL = '/static/model/';
 
-// Label
-let label = 'listening...';
+// Video
+let video;
+let flippedVideo;
+// To store the classification
+let label = "";
 
-// Teachable Machine model URL:
-let soundModelUrl = 'http://127.0.0.1:5000/static/model/'; // for some reason the sound req remote model but image doesn't...
+let running = false;
 
-let bark = new Audio("/static/bark.opus");
-let song = new Audio("/static/song.opus");
-
-let shouldRun = false;
-
-async function preload() {
-    // Load the model
-    classifier = ml5.soundClassifier(soundModelUrl + 'model.json');
+// Load the model first
+function preload() {
+    classifier = ml5.imageClassifier(imageModelURL + 'model.json');
 }
 
 function setup() {
-    createCanvas(320, 240);
-  fill(255);
-  textSize(32);
-  textAlign(CENTER, CENTER);
-  text(label, width / 2, height / 2);
+    //createCanvas(320, 260);
+    // Create the video
+    video = createCapture(VIDEO);
+    video.size(320, 240);
+    video.hide();
+
+    flippedVideo = ml5.flipImage(video);
     // Start classifying
-    // The sound model will continuously listen to the microphone
-    classifier.classify(gotResult);
+    classifyVideo();
 }
 
-function draw() {
-    if (shouldRun && label === "Car") {
-        letTheDogsOut();
+ function draw() {
+    if (label != "" && !running) {
+      document.getElementById("content").innerHTML += '<iframe src=\"/static/game.html\" width=\"1280\" height=\"720\"></iframe>';
+      running = true;
     }
+  }
+
+// Get a prediction for the current video frame
+function classifyVideo() {
+    flippedVideo = ml5.flipImage(video)
+    classifier.classify(flippedVideo, gotResult);
+    flippedVideo.remove();
+
 }
 
-// The model recognizing a sound will trigger this event
+// When we get a result
 function gotResult(error, results) {
-    if (!shouldRun) {
-        return;
-    } else if (error) {
+    // If there is an error
+    if (error) {
         console.error(error);
         return;
     }
     // The results are in an array ordered by confidence.
     // console.log(results[0]);
     label = results[0].label;
-}
 
-function letTheDogsOut() {
-    bark.play();
-    song.play();
+    fetch("/api/setpos", {
+        method: "POST",
+        body: JSON.stringify(
+            {data: label === "Right",}
+        ),
+        headers: {
+            "Content-type": "application/json; charset=UTF-8"
+        }
+    });
 
-    shouldRun = false;
 
-    document.getElementById("alert").style.display = "block";
-    document.getElementsByClassName("body")[0].style.background = "black";
+    // Classifiy again!
+    classifyVideo();
 }
