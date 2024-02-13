@@ -13,6 +13,7 @@ use rand::Rng;
 
 const RES: UVec2 = UVec2::new(1280, 720);
 
+const CAR_SIZE_HALF: Vec2 = Vec2::new(100., 100.);
 const CAR_LEFT_LANE: Vec3 = Vec3::new(-160., -200., 0.);
 const CAR_RIGHT_LANE: Vec3 = Vec3::new(160., -200., 0.);
 
@@ -36,18 +37,32 @@ fn main() {
             }),
             ReqwestPlugin::default(),
         ))
+        .add_state::<GameState>()
+        .add_event::<PositionGetEvent>()
+        .add_event::<CrashEvent>()
         .add_systems(Startup, setup)
         .add_systems(
             Update,
             (
-                spawn_obstacles,
-                update_car_position,
-                update_obstacle_position,
-                get_body_position.run_if(on_timer(Duration::from_millis(100))),
+                //TODO surely there's a better way
+                spawn_obstacles.run_if(in_state(GameState::Playing)),
+                update_car_position.run_if(in_state(GameState::Playing)),
+                update_obstacle_position.run_if(in_state(GameState::Playing)),
+                get_body_position.run_if(
+                    in_state(GameState::Playing)
+                        .and_then(on_timer(Duration::from_millis(100))),
+                ),
+                handle_crash.run_if(in_state(GameState::Playing)),
             ),
         )
-        .add_event::<PositionGetEvent>()
         .run();
+}
+
+#[derive(Clone, Eq, PartialEq, Hash, Debug, Default, States)]
+enum GameState {
+    #[default]
+    Playing,
+    Crashed,
 }
 
 /// Marker for the primary 2D camera
@@ -59,15 +74,19 @@ struct Car;
 #[derive(Component)]
 struct Obstacle;
 
+#[derive(Event)]
+struct CrashEvent;
+
 #[derive(Clone, Default, Resource)]
 struct Assets {
     background: Handle<Image>,
     car: Handle<Image>,
     obstacles: Vec<Handle<Image>>,
+    crash: Handle<Image>,
 }
 
 fn setup(
-    mut commands: Commands, mut client: BevyReqwest, server: Res<AssetServer>,
+    mut commands: Commands, client: BevyReqwest, server: Res<AssetServer>,
 ) {
     let assets = Assets {
         background: server.load("background.png"),
@@ -76,6 +95,7 @@ fn setup(
             server.load("obstacles/barrels.png"),
             server.load("obstacles/pothole.png"),
         ],
+        crash: server.load("boom.png"),
     };
     commands.insert_resource(assets.clone());
 
@@ -156,10 +176,11 @@ fn update_car_position(
     mut events: EventReader<PositionGetEvent>,
     mut car: Query<(&mut Transform, &mut Sprite), With<Car>>,
 ) {
-    let event = events.read().last();
-    if event.is_none() {
+    if events.is_empty() {
         return;
     }
+
+    let event = events.read().last();
     let event = event.unwrap();
     let mut car = car.single_mut();
 
@@ -172,12 +193,47 @@ fn update_car_position(
 
 fn update_obstacle_position(
     mut commands: Commands,
-    mut obstacles: Query<(&mut Transform, &mut Sprite, Entity), With<Obstacle>>,
+    mut obstacles: Query<
+        (&mut Transform, &mut Sprite, Entity),
+        (With<Obstacle>, Without<Car>),
+    >,
+    mut event_writer: EventWriter<CrashEvent>,
+    car: Query<&Transform, With<Car>>,
 ) {
+    let car: Vec3 = car.single().translation;
+    let car_ranges = (
+        car.x - CAR_SIZE_HALF.x..car.x + CAR_SIZE_HALF.x,
+        car.y - CAR_SIZE_HALF.y..car.y + CAR_SIZE_HALF.y,
+    );
+
     for mut obstacle in obstacles.iter_mut() {
+        if car_ranges.0.contains(&obstacle.0.translation.x)
+            && car_ranges.0.contains(&obstacle.0.translation.y)
+        {
+            event_writer.send(CrashEvent {});
+        }
         if obstacle.0.translation.y <= -350. {
             commands.entity(obstacle.2).despawn();
+            return;
         }
+
         obstacle.0.translation.y -= 1f32;
     }
+}
+
+fn handle_crash(
+    mut commands: Commands, events: EventReader<CrashEvent>,
+    assets: Res<Assets>, mut state: ResMut<NextState<GameState>>,
+    mut entities: Query<Entity, With<Sprite>>,
+) {
+    if events.is_empty() {
+        return;
+    }
+
+    for entity in entities.iter_mut() {
+        commands.entity(entity).despawn_recursive();
+    }
+
+    state.set(GameState::Crashed);
+    commands.spawn(SpriteBundle { texture: assets.crash.clone(), ..default() });
 }
